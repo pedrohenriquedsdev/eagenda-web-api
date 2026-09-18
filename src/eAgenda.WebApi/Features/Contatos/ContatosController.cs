@@ -14,4 +14,25 @@ public sealed class ContatosController(ServicoContato servicoContato) : Controll
 
         return Ok(resultado); // 200 com corpo vazio
     }
+
+    [HttpPost]
+    public ActionResult Cadastrar(CadastrarContatoRequest req)
+    {
+        var dto = new CadastrarContatoDto(
+            req.Nome,
+            req.Email,
+            req.Telefone,
+            req.Cargo,
+            req.Empresa
+        );
+
+        var resultado = servicoContato.Cadastrar(dto);
+
+        if (resultado.IsFailed)
+            return BadRequest();
+
+        var res = new CadastrarContatoResponse(resultado.Value);
+
+        return Created("/api/contatos", res);
+    }
 }

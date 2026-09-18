@@ -1,0 +1,13 @@
+@baseUrl = https://localhost:7098
+
+# @name cadastrarContato
+POST {{baseUrl}}/api/contatos
+Content-Type: application/json
+
+{
+    "nome": "Junior Testes",
+    "email": "teste-{{$guid}}@academiadoprogramador.net",
+    "telefone": "(11) 99999-0000",
+    "cargo": "Analista de Testes",
+    "empresa": "Academia do Programador"
+}
