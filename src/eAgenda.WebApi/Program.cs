@@ -1,6 +1,7 @@
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!"); // -> ENDPOINT DE UMA API (config de endpoint + action de retorno)
+app.UseHttpsRedirection(); // -> ENTENDE A EXISTÊNCIA DE "HTTPS" ALÉM DE "HTTP"
+app.MapControllers();
 
 app.Run();
