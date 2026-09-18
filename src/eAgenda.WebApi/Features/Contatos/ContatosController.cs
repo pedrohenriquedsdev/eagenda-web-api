@@ -15,6 +15,19 @@ public sealed class ContatosController(ServicoContato servicoContato) : Controll
         return Ok(resultado); // 200 com corpo vazio
     }
 
+    [HttpGet("{id:guid}")]
+    public ActionResult<DetalhesContatoDto> SelecionarPorId(Guid id)
+    {
+        var resultado = servicoContato.SelecionarPorId(id);
+
+        if (resultado.IsFailed)
+            return NotFound(id);
+
+        var dto = resultado.Value;
+
+        return Ok(dto);
+    }
+
     [HttpPost]
     public ActionResult Cadastrar(CadastrarContatoRequest req)
     {
