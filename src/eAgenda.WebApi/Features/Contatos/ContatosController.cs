@@ -1,14 +1,17 @@
+using eAgenda.Aplicacao.Modulos.ModuloContato;
 using Microsoft.AspNetCore.Mvc;
 
 namespace eAgenda.WebApi.Features.Contatos;
 
 [ApiController]
 [Route("api/contatos")]
-public sealed class ContatosController : ControllerBase // -> SEM RENDER DE VIEWS
+public sealed class ContatosController(ServicoContato servicoContato) : ControllerBase // -> SEM RENDER DE VIEWS
 {
     [HttpGet]
-    public ActionResult SelecionarTodos()
+    public ActionResult<List<ListarContatosDto>> SelecionarTodos()
     {
-        return Ok(); // 200 com corpo vazio
+        var resultado = servicoContato.SelecionarTodos();
+
+        return Ok(resultado); // 200 com corpo vazio
     }
 }
