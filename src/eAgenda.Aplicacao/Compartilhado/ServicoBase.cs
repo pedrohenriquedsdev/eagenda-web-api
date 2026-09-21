@@ -3,30 +3,44 @@ using FluentResults;
 
 namespace eAgenda.Aplicacao.Compartilhado;
 
+public enum TipoErro
+{
+    Validacao,
+    NaoEncontrado,
+    Conflito
+}
+
 public abstract class ServicoBase<T> where T : EntidadeBase<T>
 {
-    protected static Result ValidarEntidade(T entidade)
+    protected static Result ValidarEntidade<TEntidade>(EntidadeBase<TEntidade> entidade)
     {
-        List<string> erros = entidade.Validar();
+        IReadOnlyList<ErroValidacao> erros = entidade.Validar();
 
         if (erros.Count == 0)
             return Result.Ok();
 
         Result resultado = Result.Ok();
 
-        foreach (string erro in erros)
-            resultado.WithError(new Error(erro).WithMetadata("Campo", string.Empty));
+        foreach (ErroValidacao erro in erros)
+            resultado.WithError(CriarErro(TipoErro.Validacao, erro.Campo, erro.Mensagem));
 
         return resultado;
     }
 
-    protected static Result Falha(string campo, string mensagem)
+    protected static Result Falha(TipoErro tipo, string campo, string mensagem)
     {
-        return Result.Fail(new Error(mensagem).WithMetadata("Campo", campo));
+        return Result.Fail(CriarErro(tipo, campo, mensagem));
     }
 
-    protected static Result<TValue> Falha<TValue>(string campo, string mensagem)
+    protected static Result<TValue> Falha<TValue>(TipoErro tipo, string campo, string mensagem)
     {
-        return Result.Fail<TValue>(new Error(mensagem).WithMetadata("Campo", campo));
+        return Result.Fail<TValue>(CriarErro(tipo, campo, mensagem));
+    }
+
+    private static Error CriarErro(TipoErro tipo, string campo, string mensagem)
+    {
+        return new Error(mensagem)
+            .WithMetadata(nameof(TipoErro), tipo)
+            .WithMetadata("Campo", campo);
     }
 }
