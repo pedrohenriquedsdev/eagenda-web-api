@@ -14,7 +14,7 @@ public sealed class EntidadeTests
         Contato contato = new("A", "email-invalido", "000", null, null);
 
         // Act
-        List<string> erros = contato.Validar();
+        IReadOnlyList<string> erros = (IReadOnlyList<string>)contato.Validar();
 
         // Assert
         Assert.IsTrue(erros.Any(erro => erro.Contains("Nome")));
@@ -37,7 +37,7 @@ public sealed class EntidadeTests
             null);
 
         // Act
-        List<string> erros = compromisso.Validar();
+        IReadOnlyList<string> erros = (IReadOnlyList<string>)compromisso.Validar();
 
         // Assert
         Assert.IsTrue(erros.Any(erro => erro.Contains("Local")));
