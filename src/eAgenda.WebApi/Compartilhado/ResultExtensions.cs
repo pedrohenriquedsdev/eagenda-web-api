@@ -7,7 +7,7 @@ namespace eAgenda.WebApi.Compartilhado;
 
 public static class ResultExtensions
 {
-    public static ActionResult ValidationProblem(this ControllerBase controller, ResultBase result)
+    public static ActionResult ProblemDetails(this ControllerBase controller, ResultBase result)
     {
         var tipoErro = (TipoErro)result.Errors.First().Metadata[nameof(TipoErro)];
 

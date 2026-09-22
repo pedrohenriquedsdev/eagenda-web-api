@@ -1,7 +1,6 @@
 using eAgenda.Aplicacao.Modulos.ModuloContato;
 using eAgenda.WebApi.Compartilhado;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace eAgenda.WebApi.Features.Contatos;
 
@@ -12,20 +11,20 @@ public sealed class ContatosController(ServicoContato servicoContato) : Controll
     [HttpGet]
     public ActionResult<List<ListarContatosDto>> SelecionarTodos()
     {
-        var resultado = servicoContato.SelecionarTodos();
+        var resultadoSelecao = servicoContato.SelecionarTodos();
 
-        return Ok(resultado);
+        return Ok(resultadoSelecao);
     }
 
     [HttpGet("{id:guid}")]
     public ActionResult<DetalhesContatoDto> SelecionarPorId(Guid id)
     {
-        var resultado = servicoContato.SelecionarPorId(id);
+        var resultadoSelecao = servicoContato.SelecionarPorId(id);
 
-        if (resultado.IsFailed)
-            return NotFound(id);
+        if (resultadoSelecao.IsFailed)
+            return this.ProblemDetails(resultadoSelecao);
 
-        var dto = resultado.Value;
+        var dto = resultadoSelecao.Value;
 
         return Ok(dto);
     }
@@ -44,7 +43,7 @@ public sealed class ContatosController(ServicoContato servicoContato) : Controll
         var resultadoCadastro = servicoContato.Cadastrar(dto);
 
         if (resultadoCadastro.IsFailed)
-            return this.ParaErroDaApi(resultadoCadastro);
+            return this.ProblemDetails(resultadoCadastro);
 
         var id = resultadoCadastro.Value;
 
@@ -75,7 +74,7 @@ public sealed class ContatosController(ServicoContato servicoContato) : Controll
         var resultadoEdicao = servicoContato.Editar(dto);
 
         if (resultadoEdicao.IsFailed)
-            return this.ParaErroDaApi(resultadoEdicao);
+            return this.ProblemDetails(resultadoEdicao);
 
         return NoContent();
     }
@@ -86,7 +85,7 @@ public sealed class ContatosController(ServicoContato servicoContato) : Controll
         var resultadoExclusao = servicoContato.Excluir(id);
 
         if (resultadoExclusao.IsFailed)
-            return NotFound(id);
+            return this.ProblemDetails(resultadoExclusao);
 
         return NoContent();
     }
