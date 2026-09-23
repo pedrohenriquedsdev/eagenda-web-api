@@ -1,15 +1,18 @@
 using System.Diagnostics;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json.Serialization;
 using eAgenda.Aplicacao;
+using eAgenda.Dominio.Compartilhado.Identity;
 using eAgenda.Infra;
 using eAgenda.Infra.Compartilhado.Orm;
 using eAgenda.WebApi.Compartilhado;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
 using eAgenda.WebApi.Compartilhado.Identity;
-using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,40 +20,60 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfraRepositories(builder.Configuration, builder.Logging);
 builder.Services.AddApplicationServices();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme) // Define o JWT Bearer como esquema padrão de autenticação
-    .AddJwtBearer(options =>
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IProvedorDeUsuario, UserProvider>();
+
+builder.Services.AddSingleton(provider =>
+{
+    var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName)
+        .Get<JwtOptions>() ?? new JwtOptions();
+
+    return new JwtProvider(jwtOptions);
+});
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+{
+    var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName)
+        .Get<JwtOptions>() ?? new JwtOptions();
+
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName)
-            .Get<JwtOptions>() ?? new JwtOptions();
+        ValidateIssuer = true,
+        ValidIssuer = jwtOptions.Issuer,
 
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true, // Valida quem emitiu o token
-            ValidIssuer = jwtOptions.Issuer, // Define qual emissor é considerado válido
+        ValidateAudience = true,
+        ValidAudience = jwtOptions.Audience,
 
-            ValidateAudience = true, // Valida para quem o token foi destinado
-            ValidAudience = jwtOptions.Audience, // Define qual público é considerado válido
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)), // Chave Mestra
 
-            ValidateLifetime = true, // Verifica se o token ainda está dentro do prazo de validade
+        NameClaimType = ClaimTypes.NameIdentifier,
+        ClockSkew = TimeSpan.FromSeconds(30)
+    };
+});
 
-            ValidateIssuerSigningKey = true, // Verifica se a assinatura do token é válida
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtOptions.Key)
-            ), // Chave usada para validar a assinatura do JWT (Chave Mestra)
-
-            NameClaimType = ClaimTypes.NameIdentifier, // Define qual claim identifica o usuário autenticado
-
-            ClockSkew = TimeSpan.FromSeconds(30) // Permite uma tolerância de 30 segundos na validação do tempo do token
-        };
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.ClientErrorMapping[StatusCodes.Status400BadRequest].Link = ProblemDetailsTypes.BadRequest;
+        options.ClientErrorMapping[StatusCodes.Status401Unauthorized].Link = ProblemDetailsTypes.Unauthorized;
+        options.ClientErrorMapping[StatusCodes.Status403Forbidden].Link = ProblemDetailsTypes.Forbidden;
+        options.ClientErrorMapping[StatusCodes.Status404NotFound].Link = ProblemDetailsTypes.NotFound;
+        options.ClientErrorMapping[StatusCodes.Status409Conflict].Link = ProblemDetailsTypes.Conflict;
     });
 
-builder.Services.AddAuthorization();
-
-builder.Services.AddControllers().AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
@@ -60,8 +83,19 @@ builder.Services.AddProblemDetails(options =>
         if (type is not null)
             context.ProblemDetails.Type = type;
 
-        // Trace ID -> Para diferenciar requests
-        context.ProblemDetails.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+        if (context.ProblemDetails.Status == StatusCodes.Status401Unauthorized)
+        {
+            context.ProblemDetails.Title = "Não Autenticado";
+            context.ProblemDetails.Detail = "É necessário fornecer credenciais válidas.";
+        }
+        else if (context.ProblemDetails.Status == StatusCodes.Status403Forbidden)
+        {
+            context.ProblemDetails.Title = "Acesso Negado";
+            context.ProblemDetails.Detail = "O usuário autenticado não tem permissão para acessar este recurso.";
+        }
+
+        context.ProblemDetails.Extensions["traceId"] =
+            Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
     };
 });
 
@@ -99,6 +133,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseHttpsRedirection();
 
 app.UseAuthentication();

@@ -1,3 +1,4 @@
+using eAgenda.WebApi.Compartilhado.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,8 @@ namespace eAgenda.WebApi.Features.Auth;
 [AllowAnonymous] // LIBERA O ACESSO PARA AUTH -> POR ISSO ACESSO LIBERADO
 public sealed class AuthController(
     UserManager<IdentityUser<Guid>> userManager,
-    SignInManager<IdentityUser<Guid>> signInManager
+    SignInManager<IdentityUser<Guid>> signInManager,
+    JwtProvider jwtProvider
 ) : ControllerBase
 {
     [HttpPost("registrar")]
@@ -37,7 +39,7 @@ public sealed class AuthController(
     }
 
     [HttpPost("entrar")]
-    public async Task<ActionResult> Entrar(EntrarRequest request)
+    public async Task<ActionResult<AccessTokenResponse>> Entrar(EntrarRequest request)
     {
         var usuario = await userManager.FindByEmailAsync(request.Email.Trim());
 
@@ -49,6 +51,8 @@ public sealed class AuthController(
         if (!resultado.Succeeded)
             return Unauthorized();
 
-        return Ok(new UsuarioResponse(usuario.Id, usuario.Email!));
+        var token = jwtProvider.CriarToken(usuario);
+
+        return Ok(token);
     }
 }
