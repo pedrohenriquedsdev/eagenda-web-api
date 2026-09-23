@@ -1,9 +1,11 @@
 using eAgenda.Dominio.Compartilhado;
+using eAgenda.Dominio.Compartilhado.Identity;
 
 namespace eAgenda.Dominio.Modulos.ModuloTarefa;
 
-public class Tarefa : EntidadeBase<Tarefa>
+public class Tarefa : EntidadeBase<Tarefa>, IEntidadeDeUsuario
 {
+    public Guid UsuarioId { get; set; }
     public string Titulo { get; set; } = string.Empty;
     public PrioridadeTarefa Prioridade { get; set; }
     public DateTime DataCriacao { get; set; } = DateTime.Today;
@@ -11,6 +13,7 @@ public class Tarefa : EntidadeBase<Tarefa>
     public bool Concluida { get; set; }
     public int PercentualConcluido { get; set; }
     public List<ItemTarefa> Itens { get; set; } = [];
+
 
     public Tarefa()
     {
